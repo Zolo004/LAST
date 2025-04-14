@@ -78,14 +78,15 @@ export const authOptions: AuthOptions = {
   ],
 
   callbacks: {
+    // JWT token callback
     async jwt({ token, user }) {
-      console.log(user);
       if (user) {
         token.id = user.id;
-        token.accessToken = "JWT";
+        token.accessToken = "JWT"; // хэрэгцээт accessToken-г хадгалах
       }
       return token;
     },
+    // Session callback
     async session({ session, token }) {
       if (token) {
         session.user.id = token.id as string;
@@ -102,7 +103,7 @@ export const authOptions: AuthOptions = {
   secret: process.env.NEXTAUTH_SECRET, // 🔐 NextAuth-д шаардлагатай нууц үг
 
   pages: {
-    signIn: "/login", // Нэвтрэх хуудас
+    signIn: "/login", // Нэвтэрэх хуудас
   },
 };
 

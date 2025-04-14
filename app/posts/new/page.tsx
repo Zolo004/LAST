@@ -26,6 +26,7 @@ export default function NewPost() {
   if (status === "loading") {
     return <p className="text-center py-10">Ачааллаж байна...</p>;
   }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -40,21 +41,23 @@ export default function NewPost() {
     try {
       const res = await fetch("/api/posts", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title,
-          content,
-          imageUrl,
-          tags: selectedTags,
-          authorId: session.user.id, // userId биш, authorId
-        }),
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({ title, content, imageUrl, tags: selectedTags }),
       });
 
+      console.log("API хариу:", res); // Хариуны статустай хамт шалгана
+
       if (res.ok) {
+        const data = await res.json();
+        console.log('API хариу JSON:', data);
         router.push("/posts");
       } else {
-        const errorData = await res.json();
-        alert(errorData.message || "Нийтлэл үүсгэхэд алдаа гарлаа");
+        const errorData = await res.text(); // Хэрэв JSON биш бол текст авах
+        console.log("Алдаа:", errorData);
+        alert(errorData || "Нийтлэл үүсгэхэд алдаа гарлаа");
       }
     } catch (error) {
       console.error("Submission error:", error);

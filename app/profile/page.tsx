@@ -3,14 +3,13 @@
 import { useSession } from "next-auth/react";
 import { useEffect, useState } from "react";
 import Image from "next/image";
-import { POST } from "../api/comments/route";
 
 interface Post {
   id: string;
   title: string;
   content: string;
   createdAt: string;
-  imageUrl?: string;
+  imageUrl?: string | null;
   tags?: string[];
 }
 
@@ -24,7 +23,7 @@ export default function ProfilePage() {
       fetch("/api/my-posts")
         .then((res) => res.json())
         .then((data) => {
-          setPosts(data);
+          setPosts(data.posts || []); // Make sure posts exist in the response
           setLoading(false);
         })
         .catch((error) => {
@@ -75,9 +74,22 @@ export default function ProfilePage() {
               <p className="text-sm text-gray-600">
                 {new Date(post.createdAt).toLocaleDateString()}
               </p>
-              <img src={post.imageUrl} alt={post.title} />
-              <p className="text-gray-800">
-                {post.content.substring(0, 100)}...
+
+              {/* Handle missing imageUrl */}
+              {post.imageUrl ? (
+                <img
+                  src={post.imageUrl}
+                  alt={post.title}
+                  className="mt-2 w-full h-auto rounded-md"
+                />
+              ) : (
+                <div className="mt-2 w-full h-48 bg-gray-200 rounded-md flex items-center justify-center text-sm text-gray-500">
+                  Зураг байхгүй
+                </div>
+              )}
+
+              <p className="text-gray-800 mt-2">
+                {post.content ? post.content.substring(0, 100) : "Агуулга байхгүй"}...
               </p>
             </li>
           ))}

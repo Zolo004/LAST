@@ -1,111 +1,33 @@
-import prisma from "../../../lib/prisma";
-import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "../auth/[...nextauth]/route";
-export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const tag = searchParams.get("tag");
-  const page = parseInt(searchParams.get("page") || "1", 10);
-  const limit = parseInt(searchParams.get("limit") || "10", 10);
+import { NextResponse, NextRequest } from "next/server";
+import prisma from "@/lib/prisma";
+import { getToken } from "next-auth/jwt";
 
+// 🔐 JWT нууц үг .env-д байгаа эсэхээ шалгаарай
+const secret = process.env.NEXTAUTH_SECRET;
+
+export async function POST(req: NextRequest) {
   try {
-    const skip = (page - 1) * limit;
+    const token = await getToken({ req, secret });
 
-    console.log("Fetching posts with params:", { tag, page, limit, skip });
-
-    const posts = await prisma.post.findMany({
-      where: tag ? { tags: { has: tag } } : {},
-      include: {
-        author: {
-          select: { id: true, name: true, email: true, image: true },
-        },
-      },
-      skip,
-      take: limit,
-      orderBy: { createdAt: "desc" },
-    });
-
-    // tags-ыг шалгаж, засах
-    const sanitizedPosts = posts.map((post) => ({
-      ...post,
-      tags: Array.isArray(post.tags)
-        ? post.tags
-        : typeof post.tags === "string"
-        ? [post.tags]
-        : [],
-    }));
-
-    console.log("Sanitized posts:", sanitizedPosts);
-
-    const totalPosts = await prisma.post.count({
-      where: tag ? { tags: { has: tag } } : {},
-    });
-
-    console.log("Total posts:", totalPosts);
-
-    const totalPages = Math.ceil(totalPosts / limit);
-
-    return NextResponse.json(
-      {
-        posts: sanitizedPosts,
-        pagination: {
-          currentPage: page,
-          totalPages,
-          totalPosts,
-          limit,
-        },
-      },
-      { status: 200 }
-    );
-  } catch (error) {
-    console.error("Detailed API Error:", error);
-    return NextResponse.json(
-      {
-        error: "Алдаа гарлаа",
-        details: error instanceof Error ? error.message : "Тодорхойгүй алдаа",
-      },
-      { status: 500 }
-    );
-  }
-}
-export async function POST(req: Request) {
-  try {
-    const session = await getServerSession(authOptions);
-
-    if (!session) {
-      return NextResponse.json(
-        { message: "Нэвтрэх шаардлагатай" },
-        { status: 401 }
-      );
+    if (!token || !token.id) {
+      console.log("🔐 Token байхгүй байна");
+      return NextResponse.json({ message: "Нэвтрэх шаардлагатай" }, { status: 401 });
     }
 
     const body = await req.json();
-    const { title, content, imageUrl, tags, authorId } = body;
+    const { title, content, imageUrl, tags } = body;
 
-    // authorId байхгүй бол алдаа гаргах
-    if (!authorId || typeof authorId !== "string") {
-      return NextResponse.json(
-        { message: "Хэрэглэгчийн ID шаардлагатай" },
-        { status: 400 }
-      );
-    }
-
-    // Гарчиг болон агуулга шалгах
     if (!title || !content) {
-      return NextResponse.json(
-        { message: "Гарчиг болон агуулга оруулна уу" },
-        { status: 400 }
-      );
+      return NextResponse.json({ message: "Гарчиг болон агуулга оруулна уу" }, { status: 400 });
     }
 
-    // Шинэ нийтлэл үүсгэх
     const newPost = await prisma.post.create({
       data: {
         title,
         content,
         imageUrl: imageUrl || null,
         tags: tags && Array.isArray(tags) ? tags : [],
-        authorId,
+        authorId: token.id, // 🤝 token-аас авсан ID-г ашиглана
       },
     });
 
